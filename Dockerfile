@@ -1,133 +1,94 @@
-#!/bin/bash
+\ REQUIRED FILES TO BUILD THIS IMAGE
+# ----------------------------------
+# (1) ords.*.zip
+#     Download Oracle Rest Data Services from
+#     http://www.oracle.com/technetwork/developer-tools/rest-data-services/downloads/index.html
 #
-# simple function to replace strings in param files
-function replace(){
-   FROM=$1
-   TO=$2
-   IN=$3
-   sed -i -e "s|###${FROM}###|${TO}|g" $IN
-}
+# OPTIONS FILES TO BUILD THIS IMAGE
+# ----------------------------------
+# (1) sqlcl.*.zip
+#     Download SQLcl from
+#     http://www.oracle.com/technetwork/developer-tools/sqlcl/downloads/index.html
+#
+# (2) apex*.zip
+#     Download SQLcl from
+#     http://www.oracle.com/technetwork/developer-tools/apex/downloads/download-085147.html
+#
+# HOW TO BUILD THIS IMAGE
+# -----------------------
+# Put the downloaded file in the same directory as this Dockerfile
+#
+#
+# To Build:
+#   Edit and Run:
+#      $ docker build -t krisrice/ords:3.0.10  --build-arg DBHOST=192.168.3.119 --build-arg DBSERVICE=orcl --build-arg DBPORT=1521 --build-arg DBPASSWD=oracle  .
+# To Run:
+#      $ docker run -p 8888:8888 -p 8443:8443  -it krisrice/ords:3.0.10
+#
+# To Run with existing apex/images
+#
+#      $ docker run -p 8888:8888 -p 8443:8443  -v /Users/klrice/workspace/apex_trunk/images/:/opt/oracle/ords/doc_root/i  -it krisrice/ords:3.0.10
+#
+# Pull base image
+# ---------------
+FROM openjdk:8
 
-function setupAPEX(){
-  if [ -f $APEX_HOME/apexins.sql ]; then
-    echo "#####################"
-    echo "INSTALLING APEX..."
-    echo "#####################"
+ARG DBHOST
+ARG DBPORT
+ARG DBPASSWD
+ARG DBSERVICE
 
-  # setup apex images for the ords install
-  APEXI=$APEX_HOME/images
+# Maintainer
+# ----------
+MAINTAINER Kris Rice <kris.rice@jokr.net>
 
-  cd $APEX_HOME
-  # setting passwords to abc xyz since setupORDS scrambles them
-/opt/oracle/sqlcl/bin/sql /nolog <<EOF
-conn SYS/$DBPASSWD@//$DBHOST:$DBPORT/$DBSERVICE as sysdba
-@apexins SYSAUX SYSAUX TEMP /i/
-@apex_rest_config_core.sql abc xyz
-EOF
-fi;
-  cd -
-}
+# Environment variables required for this build (do NOT change)
+# -------------------------------------------------------------
+ENV ORACLE_BASE=/opt/oracle \
+    ORDS_HOME=/opt/oracle/ords \
+    INSTALL_FILE="ords.*.zip" \
+    SQLCL_FILE="sqlcl*.zip" \
+    APEX_HOME=/opt/oracle/apex \
+    APEX_FILE="apex*.zip" \
+    CONFIG_PROPS="ords_params.properties" \
+    STANDALONE_PROPS="standalone.properties" \
+    RUN_FILE="runOrds.sh" \
+    CONFIG_FILE="setupOrds.sh"
 
-function setupOrds() {
+# Copy binaries
+# -------------
+COPY $INSTALL_FILE $SQLCL_FILE $CONFIG_PROPS $RUN_FILE $CONFIG_FILE $STANDALONE_PROPS $ORDS_HOME/
+COPY $SQLCL_FILE $ORACLE_BASE/
+COPY $APEX_FILE $ORACLE_BASE/
 
-   # Default for $ORDS_TS_DEFAULT SID
-   if [ "$ORDS_TS_DEFAULT" == "" ]; then
-      export ORDS_TS_DEFAULT=SYSAUX
-   fi;
-
-   # Default for ORDS_TS_TEMP
-   if [ "$ORDS_TS_TEMP" == "" ]; then
-      export ORDS_TS_TEMP=TEMP
-   fi;
-
-   # Replace variables
-   replace "DBHOST" "$DBHOST" "$ORDS_HOME/$CONFIG_PROPS"
-   replace "DBPORT" "$DBPORT" "$ORDS_HOME/$CONFIG_PROPS"
-   replace "DBPASSWD" "$DBPASSWD" "$ORDS_HOME/$CONFIG_PROPS"
-   replace "DBSERVICE" "$DBSERVICE" "$ORDS_HOME/$CONFIG_PROPS"
-
-   # Create config directory
-   java -jar $ORDS_HOME/ords.war configdir $ORDS_HOME/config
-
-   mkdir -p $ORDS_HOME/config/ords/standalone
-
-   mkdir -p  $ORDS_HOME/doc_root
-
-   # Randomize the password for all the ORDS connection pool accounts
-   PASSWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 28 | head -n 1)
-   /opt/oracle/sqlcl/bin/sql /nolog <<EOF
-conn SYS/$DBPASSWD@//$DBHOST:$DBPORT/$DBSERVICE as sysdba
-alter user APEX_LISTENER account unlock identified by "$PASSWD";
-alter user APEX_PUBLIC_USER account unlock identified by "$PASSWD";
-alter user APEX_REST_PUBLIC_USER account unlock identified by "$PASSWD";
-alter user ORDS_PUBLIC_USER account unlock identified by "$PASSWD";
-EOF
-
-  replace "RANDOMPASSWD" "$PASSWD" "$ORDS_HOME/$CONFIG_PROPS"
-
-
-   cp $ORDS_HOME/$STANDALONE_PROPS $ORDS_HOME/config/ords/standalone
-   # Replace in standalone file
-   # set the port to 8888
-   if [ "$PORT" == "" ]; then
-      PORT=8888
-   fi;
-   if [ "$SPORT" == "" ]; then
-      SPORT=8443
-   fi;
-   replace "PORT"  "$PORT" "$ORDS_HOME/config/ords/standalone/$STANDALONE_PROPS"
-   replace "SPORT" "$SPORT" "$ORDS_HOME/config/ords/standalone/$STANDALONE_PROPS"
-
-   # Doc root to host static files
-   replace "DOCROOT" "$ORDS_HOME/doc_root" "$ORDS_HOME/config/ords/standalone/$STANDALONE_PROPS"
-
-   # If no APEXI passed in make it the doc_root/i
-   if [ "$APEXI" == "" ]; then
-      APEXI="$ORDS_HOME/doc_root/i"
-   fi;
-
-   replace "APEXI" "$APEXI" "$ORDS_HOME/config/ords/standalone/$STANDALONE_PROPS"
-
-   # Copy config file into place
-   cp $ORDS_HOME/$CONFIG_PROPS $ORDS_HOME/params/
-
-   # Start ODRDS setup
-   java -jar $ORDS_HOME/ords.war install simple
-
-   echo Setup
-}
-
-########### SIGTERM handler ############
-function _term() {
-   echo "Stopping container."
-   echo "SIGTERM received, shutting down ORDS!"
-   pkill ords;
-}
-
-########### SIGKILL handler ############
-function _kill() {
-   echo "SIGKILL received, shutting down ORDS!"
-   pkill -9 ords;
-}
-
-############# MAIN ################
-
-# Set SIGTERM handler
-trap _term SIGTERM
-
-# Set SIGKILL handler
-trap _kill SIGKILL
-
-# Check whether ords is already setup
-if [ "$DBHOST" != "" ]; then
-   setupAPEX;
-   setupOrds;
-fi;
-echo "#####################"
-echo "ORDS IS Configured!"
-echo "#####################"
+# Setup filesystem and oracle user
+# Adjust file permissions, go to /opt/oracle as user 'oracle' to proceed with ORDS installation
+# ------------------------------------------------------------
+RUN mkdir -p $ORDS_HOME/config && \
+    chmod ug+x $ORDS_HOME/$CONFIG_FILE  $ORDS_HOME/$RUN_FILE && \
+    groupadd -g 500 dba && \
+    useradd -d /home/oracle -g dba -m -s /bin/bash oracle && \
+    echo oracle:oracle | chpasswd && \
+    if [ -f $ORACLE_BASE/$SQLCL_FILE ]; then cd $ORACLE_BASE && jar -xf $ORACLE_BASE/$SQLCL_FILE &&  chmod 755 $ORACLE_BASE/sqlcl/bin/sql; rm $ORACLE_BASE/$SQLCL_FILE; fi && \
+    if [ -f $ORACLE_BASE/$APEX_FILE ];  then cd $ORACLE_BASE && jar -xf $ORACLE_BASE/$APEX_FILE; rm $ORACLE_BASE/$APEX_FILE; fi && \
+    cd $ORDS_HOME && \
+    jar -xf $INSTALL_FILE && \
+    rm $INSTALL_FILE && \
+    $ORDS_HOME/$CONFIG_FILE && \
+    chown -R oracle:dba $ORACLE_BASE
 
 
-# tail -f $ORDS_HOME/logs/*.log &
-#childPID=$!
-#wait $childPID
+# Start installation
+# -------------------
+ENV PATH="${PATH}:$ORACLE_BASE/sqlcl/bin"
+
+USER oracle
+
+WORKDIR /home/oracle
+
+EXPOSE 8888
+
+VOLUME $ORDS_HOME/config
+
+# Define default command to start Oracle Database.
+CMD $ORDS_HOME/$RUN_FILE
