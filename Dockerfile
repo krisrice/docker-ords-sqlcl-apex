@@ -1,4 +1,4 @@
-\ REQUIRED FILES TO BUILD THIS IMAGE
+# REQUIRED FILES TO BUILD THIS IMAGE
 # ----------------------------------
 # (1) ords.*.zip
 #     Download Oracle Rest Data Services from
