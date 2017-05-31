@@ -1,13 +1,5 @@
 #!/bin/bash
 #
-# Since: February, 2017
-# Author: gerald.venzl@oracle.com
-# Description: Setup and runs Oracle Rest Data Services.
-#
-# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
-#
-# Copyright (c) 2014-2017 Oracle and/or its affiliates. All rights reserved.
-#
 # simple function to replace strings in param files
 function replace(){
    FROM=$1
