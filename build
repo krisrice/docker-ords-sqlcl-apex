@@ -1,0 +1,8 @@
+#
+# example build
+#
+docker rmi -f krisrice/ords:3.0.10
+
+docker build -t krisrice/ords:3.0.10  --build-arg DBHOST=192.168.3.119 --build-arg DBSERVICE=orcl --build-arg DBPORT=1521 --build-arg DBPASSWD=oracle  .
+
+docker run -p 8888:8888 -p 8443:8443  -v /Users/klrice/workspace/apex_trunk/images/:/opt/oracle/ords/doc_root/i  -it krisrice/ords:3.0.10
