@@ -48,6 +48,18 @@ In this case, the default, Forward 8888 and 8433
 docker run -p 8888:8888 -p 8443:8443 -it krisrice/ords:3.0.10
 
 ```
+## Run in the Background
+
+```
+docker run -p 8888:8888 -p 8443:8443 --name=ords krisrice/ords:3.0.10
+
+```
+## Logs from background 
+
+
+```
+docker logs -f ords
+```
 
 ## Docker image layout and env
 
