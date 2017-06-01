@@ -51,7 +51,7 @@ docker run -p 8888:8888 -p 8443:8443 -it krisrice/ords:3.0.10
 ## Run in the Background
 
 ```
-docker run -p 8888:8888 -p 8443:8443 --name=ords krisrice/ords:3.0.10
+docker run -d -p 8888:8888 -p 8443:8443 --name=ords krisrice/ords:3.0.10
 
 ```
 ## Logs from background 
