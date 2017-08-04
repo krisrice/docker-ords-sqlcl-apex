@@ -9,7 +9,7 @@ Download from OTN ORDS
 
 Required: [Download ORDS](http://www.oracle.com/technetwork/developer-tools/rest-data-services/downloads/index.html)
 
-Optional SQLcl: [Download SQLcl](http://www.oracle.com/technetwork/developer-tools/sqlcl/downloads/index.html)
+Required SQLcl: [Download SQLcl](http://www.oracle.com/technetwork/developer-tools/sqlcl/downloads/index.html)
     
 Optional APEX:    [Download APEX](http://www.oracle.com/technetwork/developer-tools/apex/downloads/download-085147.html)
     
