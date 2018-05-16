@@ -34,7 +34,11 @@ Optional
 
 # Example Build    
 ```
-docker build -t krisrice/ords:3.0.10  --build-arg DBHOST=192.168.3.119 --build-arg DBSERVICE=orcl --build-arg DBPORT=1521 --build-arg DBPASSWD=oracle  .
+docker build -t krisrice/ords:3.0.10  \
+      --build-arg DBHOST=192.168.3.119 \
+      --build-arg DBSERVICE=orcl \
+      --build-arg DBPORT=1521 \
+      --build-arg DBPASSWD=oracle  .
 ```
 
 # Run the docker
